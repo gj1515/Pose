@@ -1,0 +1,11 @@
+pycocotools
+opencv-python
+numpy
+tqdm
+tensorboard
+#===========vitpose====================
+timm
+ffmpeg
+#======================================
+ptflops
+yacs
