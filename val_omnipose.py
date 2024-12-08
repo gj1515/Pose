@@ -11,7 +11,6 @@ from modules.load_state import load_state
 
 from tqdm import tqdm
 
-
 from datasets.Robot.dataset_provider import create_dataset_loader
 
 from config.skeleton import Skeleton
@@ -22,14 +21,13 @@ from models.omnipose.omnipose import get_omnipose
 
 from testing.decode_net import resize_hm
 from testing.post_heatmap import decode_pose_single_person
-from testing.eval_util import get_keypoints_ori, get_keypoints_ori_coco
+from testing.eval_util import  get_keypoints_ori_coco
 
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 import matplotlib.patches as mpatches
 
-import pickle
-from modules.loss import JointsMSELoss, AverageMeter
+from modules.loss import AverageMeter
 from modules.evaluate import accuracy
 import time
 
@@ -321,7 +319,7 @@ def validate_coco(criterion, val_loader, model, val_pbar=None):
 
 
 
-def test(labels, output_name, images_folder, net, config, visualize=False, val_pbar=None):
+def test(labels, output_name, net, config, visualize=False, val_pbar=None):
     net = net.cuda().eval()
     Thresh = 0.1
 
@@ -425,10 +423,10 @@ def test(labels, output_name, images_folder, net, config, visualize=False, val_p
 if __name__ == '__main__':
     from config.config_omnipose_model import _C as cfg
     args = ConfigOmniPose().parse()
-    net = get_omnipose(cfg, is_train=True)
+    model = get_omnipose(cfg, is_train=True)
 
     checkpoint = torch.load(args.checkpoint_path)
-    load_state(net, checkpoint)
+    load_state(model, checkpoint)
 
 
-    test(args.val_labels, args.val_output_name, args.val_images_folder, net, args, args.visualize)
+    test(args.val_labels, args.val_output_name, model, args, args.visualize)

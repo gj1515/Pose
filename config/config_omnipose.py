@@ -47,13 +47,13 @@ class ConfigOmniPose:
         self.parser.add_argument('--batch-size', type=int, default=16, help='batch size')
         self.parser.add_argument('--batches-per-iter', type=int, default=1, help='number of batches to accumulate gradient from')
         self.parser.add_argument('--num-workers', type=int, default=1, help='number of workers')
-        self.parser.add_argument('--checkpoint-path', type=str, default='', help='path to the checkpoint to continue training from')
-        self.parser.add_argument('-loadModel', default='', help='Load pre-trained')
+        self.parser.add_argument('--checkpoint-path', type=str, default='weights/omnipose_256_model_best.pth', help='path to the checkpoint to continue training from')
+        self.parser.add_argument('-loadModel', default='weights/omnipose_256_model_best.pth', help='Load pre-trained')
         self.parser.add_argument('--experiment-name', type=str, default='1203_omnipose', help='experiment name to create folder for checkpoints')
 
         self.parser.add_argument('--val-labels', type=str, default="D:/Dev/Dataset/coco/annotations/val_label.pkl", help='path to json with keypoints val labels')
         self.parser.add_argument('--val-images-folder', type=str, default="D:/Dev/Dataset/coco/val2017", help='path to COCO val images folder')
-        self.parser.add_argument('--val-output-name', type=str, default='output_1206_omnipose_best.json', help='name of output json file with detected keypoints')
+        self.parser.add_argument('--val-output-name', type=str, default='results/output_omnipose_1206_checkpoint_epoch_124_best.json', help='name of output json file with detected keypoints')
         self.parser.add_argument('--checkpoint-after', type=int, default=1, help='number of iterations to save checkpoint')
         self.parser.add_argument('--val-after', type=int, default=1, help='number of iterations to run validation')
 
@@ -189,7 +189,7 @@ class ConfigOmniPose:
         if set:
             if self.config.dataset == 'coco':
                 self.config.train_split = 1.0
-                self.config.val_split = 0.2
+                self.config.val_split = 1.0
             elif self.config.dataset == 'coco_eval':
                 self.config.train_split = 1.0
                 self.config.val_split = 1.0

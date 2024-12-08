@@ -1,7 +1,4 @@
-import argparse
-import json
 import os
-from .skeleton import Skeleton
 from yacs.config import CfgNode as CN
 
 
@@ -69,6 +66,20 @@ _C.LOSS.TOPK = 8
 _C.LOSS.USE_TARGET_WEIGHT = True
 _C.LOSS.USE_DIFFERENT_JOINTS_WEIGHT = False
 
+
+# testing
+_C.TEST = CN()
+_C.TEST.BBOX_THRE = 1.0
+_C.TEST.IMAGE_THRE = 0.0
+_C.TEST.IN_VIS_THRE = 0.2
+_C.TEST.MODEL_FILE = ''
+_C.TEST.NMS_THRE = 1.0
+_C.TEST.OKS_THRE = 0.9
+_C.TEST.USE_GT_BBOX = True
+_C.TEST.FLIP_TEST = True
+_C.TEST.POST_PROCESS = True
+_C.TEST.BLUR_KERNEL = 11
+_C.TEST.SOFT_NMS = False
 
 
 
