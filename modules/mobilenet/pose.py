@@ -1,12 +1,12 @@
 import cv2
 import numpy as np
 
-from modules.keypoints import BODY_PARTS_KPT_IDS, BODY_PARTS_PAF_IDS
-from modules.one_euro_filter import OneEuroFilter
+from modules.mobilenet.keypoints import BODY_PARTS_KPT_IDS, BODY_PARTS_PAF_IDS
+from modules.mobilenet.one_euro_filter import OneEuroFilter
 
 
 class Pose:
-    num_kpts = 17
+    num_kpts = 18
     kpt_names = ['nose', 'neck',
                  'r_sho', 'r_elb', 'r_wri', 'l_sho', 'l_elb', 'l_wri',
                  'r_hip', 'r_knee', 'r_ank', 'l_hip', 'l_knee', 'l_ank',
@@ -16,7 +16,35 @@ class Pose:
                       dtype=np.float32) / 10.0
     vars = (sigmas * 2) ** 2
     last_id = -1
-    color = [255, 0, 255]
+    # bgr order
+    RED = (127, 2, 240)
+    BLUE = (240, 176, 0)
+    GREEN = (142, 209, 169)
+    YELLOW = (0, 255, 255)
+    bone_colors = {
+        (1, 2): BLUE,  # neck -> r_sho
+        (1, 5): RED,  # neck -> l_sho
+        (2, 3): BLUE,  # r_sho -> r_elb
+        (3, 4): BLUE,  # r_elb -> r_wri
+        (5, 6): RED,  # l_sho -> l_elb
+        (6, 7): RED,  # l_elb -> l_wri
+        (1, 8): BLUE,  # neck -> r_hip
+        (8, 9): BLUE,  # r_hip -> r_knee
+        (9, 10): BLUE,  # r_knee -> r_ank
+        (1, 11): RED,  # neck -> l_hip
+        (11, 12): RED,  # l_hip -> l_knee
+        (12, 13): RED,  # l_knee -> l_ank
+        (1, 0): GREEN,  # neck -> nose
+        (0, 14): BLUE,  # nose -> r_eye
+        (14, 16): BLUE,  # r_eye -> r_ear
+        (0, 15): RED,  # nose -> l_eye
+        (15, 17): RED  # l_eye -> l_ear
+    }
+
+    # Define color for keypoints
+    color = YELLOW  # Default color for keypoints
+
+
 
     def __init__(self, keypoints, confidence):
         super().__init__()
@@ -59,32 +87,9 @@ class Pose:
                 x_b, y_b = self.keypoints[kpt_b_id]
                 cv2.circle(img, (int(x_b), int(y_b)), 3, Pose.color, -1)
             if global_kpt_a_id != -1 and global_kpt_b_id != -1:
-                cv2.line(img, (int(x_a), int(y_a)), (int(x_b), int(y_b)), Pose.color, 2)
+                bone_color = Pose.bone_colors.get((kpt_a_id, kpt_b_id), Pose.color)
+                cv2.line(img, (int(x_a), int(y_a)), (int(x_b), int(y_b)), bone_color, 2)
 
-    def draw_vitpose(self, img):
-        assert self.keypoints.shape == (Pose.num_kpts, 2)
-
-        # parents 정의 (COCO-17 포맷)
-        parents = [1, -1, -1, 1, 1,  # Nose to Ears (0-4)
-                   1, 1, 5, 6, 7, 8,  # Shoulders to Wrists (5-10)
-                   5, 6, 11, 12, 13, 14]  # Hips to Ankles (11-16)
-
-        # 모든 관절 그리기
-        for kpt_id in range(Pose.num_kpts):
-            if self.keypoints[kpt_id, 0] != -1:
-                x, y = self.keypoints[kpt_id]
-                cv2.circle(img, (int(x), int(y)), 3, Pose.color, -1)
-
-        # 부모-자식 관계에 따라 뼈대 연결선 그리기
-        for kpt_id in range(Pose.num_kpts):
-            parent_id = parents[kpt_id]
-            if parent_id < 0:  # 루트 관절은 건너뛰기
-                continue
-
-            if self.keypoints[kpt_id, 0] != -1 and self.keypoints[parent_id, 0] != -1:
-                x1, y1 = self.keypoints[kpt_id]
-                x2, y2 = self.keypoints[parent_id]
-                cv2.line(img, (int(x1), int(y1)), (int(x2), int(y2)), Pose.color, 2)
 
 def get_similarity(a, b, threshold=0.5):
     num_similar_kpt = 0

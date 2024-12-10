@@ -15,6 +15,17 @@ from torch.utils.data import Dataset
 import pycocotools
 
 
+def get_mask(bbox, mask):
+    x, y, w, h = [int(v) for v in bbox]
+    x = max(0, min(x, mask.shape[1] - 1))
+    y = max(0, min(y, mask.shape[0] - 1))
+    w = min(w, mask.shape[1] - x)
+    h = min(h, mask.shape[0] - y)
+    if w > 0 and h > 0:
+        mask[y:y + h, x:x + w] = 0
+
+    return mask
+
 
 class CocoDataset_SinglePerson(Dataset):
     def __init__(self, config, type='train', is_regress=False, need_paf=False, transform=None):
@@ -54,8 +65,9 @@ class CocoDataset_SinglePerson(Dataset):
         img_path = os.path.join(self.img_dir, label['img_file'])
         img = cv2.imread(img_path, cv2.IMREAD_COLOR | cv2.IMREAD_IGNORE_ORIENTATION)    #uint8, bgr
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)      # RGB
+        ori_img = img.copy()
 
-        sample = {'label': label, 'image': img}
+        sample = {'label': label, 'image': img, 'ori_img': ori_img}
 
         if self.transform:
             sample = self.transform(sample)
@@ -171,6 +183,20 @@ class CocoDataset_SinglePerson(Dataset):
         sample['image'] = transform(sample['image'])
         # sample['image'] = normalize_image(sample['image'])
 
+        mask = np.ones(shape=(sample['image'].shape[-2], sample['image'].shape[-1]), dtype=np.float32)
+        # mask = get_mask(sample['label']['obj_bbox'], mask)
+        sample['mask'] = mask
+        mask = cv2.resize(sample['mask'], dsize=None, fx=1/8, fy=1/8, interpolation=cv2.INTER_AREA)
+
+        keypoint_mask = np.zeros(shape=sample['heat_maps'].shape, dtype=np.float32)
+        for idx in range(keypoint_mask.shape[0]):
+            keypoint_mask[idx] = mask
+        sample['keypoint_mask'] = keypoint_mask
+
+        paf_mask = np.zeros(shape=sample['paf_maps'].shape, dtype=np.float32)
+        for idx in range(paf_mask.shape[0]):
+            paf_mask[idx] = mask
+        sample['paf_mask'] = paf_mask
 
         if self._is_regress:
             sample['label']['keypoints'] = normalize_keypoints(sample['label']['keypoints'], self.config.netSize)

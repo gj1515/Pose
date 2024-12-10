@@ -14,8 +14,8 @@ _C.MODEL.PRETRAINED = ''
 _C.MODEL.NUM_JOINTS = 17
 _C.MODEL.TAG_PER_JOINT = True
 _C.MODEL.TARGET_TYPE = 'gaussian'
-_C.MODEL.IMAGE_SIZE = [192, 256]  # width * height, ex: 192 * 256
-_C.MODEL.HEATMAP_SIZE = [48, 64]  # width * height, ex: 24 * 32
+_C.MODEL.IMAGE_SIZE = [384, 288]  # width * height, ex: 192 * 256
+_C.MODEL.HEATMAP_SIZE = [96, 72]  # width * height, ex: 24 * 32
 _C.MODEL.SIGMA = 3
 
 _C.MODEL.EXTRA = CN(new_allowed=True)

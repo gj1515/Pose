@@ -51,38 +51,34 @@ class ColorStyle:
         for i in range(len(self.point_color)):
             self.ring_color.append(tuple(np.array(self.point_color[i]) / 255.))
 
-        # Red    = (240,  2,127)
+        # RED    = (240,  2,127)
         # Yellow = (255,255,  0)
         # Green  = (169,209,142)
         # Pink   = (252,176,243)
-        # Blue   = (0,176,240)
+        # BLUE   = (0,176,240)
         color_ids = [(0, 176, 240), (252, 176, 243), (169, 209, 142), (255, 255, 0), (240, 2, 127)]
 
         self.color_ids = []
         for i in range(len(color_ids)):
             self.color_ids.append(tuple(np.array(color_ids[i]) / 255.))
 
+#color = [(252, 176, 243), (252, 176, 243), (252, 176, 243),
+#         (0, 176, 240), (0, 176, 240), (0, 176, 240),
+#         (240, 2, 127), (240, 2, 127), (240, 2, 127), (240, 2, 127), (240, 2, 127),
+#         (255, 255, 0), (255, 255, 0), (169, 209, 142),
+#         (169, 209, 142), (169, 209, 142)]
 
-color = [(252, 176, 243), (252, 176, 243), (252, 176, 243),
-         (0, 176, 240), (0, 176, 240), (0, 176, 240),
-         (240, 2, 127), (240, 2, 127), (240, 2, 127), (240, 2, 127), (240, 2, 127),
-         (255, 255, 0), (255, 255, 0), (169, 209, 142),
-         (169, 209, 142), (169, 209, 142)]
+RED = (127, 2, 240)
+BLUE = (240, 176, 0)
+GREEN  = (142,209,169)
+
+color = [RED,RED,BLUE,BLUE,GREEN,RED,BLUE,GREEN,RED,BLUE,RED,BLUE,GREEN,RED,BLUE,RED, BLUE, RED, BLUE]
 
 link_pairs = [[15, 13], [13, 11], [16, 14], [14, 12], [11, 12], \
               [5, 11], [6, 12], [5, 6], [5, 7], [6, 8], [7, 9], \
               [8, 10], [1, 2], [0, 1], [0, 2], [1, 3], [2, 4], [0, 5], [0, 6]]
 
-point_color = [(240, 2, 127), (240, 2, 127), (240, 2, 127),
-               (240, 2, 127), (240, 2, 127),
-               (255, 255, 0), (169, 209, 142),
-               (255, 255, 0), (169, 209, 142),
-               (255, 255, 0), (169, 209, 142),
-               (252, 176, 243), (0, 176, 240), (252, 176, 243),
-               (0, 176, 240), (252, 176, 243), (0, 176, 240),
-               (255, 255, 0), (169, 209, 142),
-               (255, 255, 0), (169, 209, 142),
-               (255, 255, 0), (169, 209, 142)]
+point_color = [RED,RED,BLUE,RED,BLUE,RED,BLUE,RED,BLUE,RED,BLUE,RED,BLUE,RED,BLUE,RED,BLUE]
 
 artacho_style = ColorStyle(color, link_pairs, point_color)
 
@@ -98,63 +94,53 @@ def map_joint_dict(joints):
     return joints_dict
 
 
-def plot_COCO_image(preds, img_path, save_path, link_pairs, ring_color, color_ids, save=True):
+def plot_COCO_image(preds, img_path, save_path, link_pairs, ring_color, color_ids, model_size, save=True):
     # Read Images
-    data_numpy = cv2.imread(img_path, cv2.IMREAD_COLOR | cv2.IMREAD_IGNORE_ORIENTATION)
-    data_numpy = cv2.resize(data_numpy, (384, 288), interpolation=cv2.INTER_AREA)
-    h = data_numpy.shape[0]
-    w = data_numpy.shape[1]
+    model_width, model_height = model_size
+    frame = cv2.imread(img_path, cv2.IMREAD_COLOR)
+    if frame is None:
+        print(f"Failed to load image: {img_path}")
+        return
 
-    # Plot
-    fig = plt.figure(figsize=(w / 100, h / 100), dpi=100)
-    ax = plt.subplot(1, 1, 1)
-    bk = plt.imshow(data_numpy[:, :, ::-1])
-    bk.set_zorder(-1)
+    frame = cv2.resize(frame, (model_width, model_height), interpolation=cv2.INTER_AREA)
+
+    # Scale predictions to match image size
+    h, w = frame.shape[:2]
+    preds[0, :, 0] = preds[0, :, 0] * w / model_width
+    preds[0, :, 1] = preds[0, :, 1] * h / model_height
+
+    # Draw skeleton and joints using OpenCV
     joints_dict = map_joint_dict(preds[0])
 
-    # stick
+    # Draw lines
     for k, link_pair in enumerate(link_pairs):
-        lw = 2
-        line = mlines.Line2D(
-            np.array([joints_dict[link_pair[0]][0],
-                      joints_dict[link_pair[1]][0]]),
-            np.array([joints_dict[link_pair[0]][1],
-                      joints_dict[link_pair[1]][1]]),
-            ls='-', lw=lw, alpha=1, color=color_ids[0], )
-        line.set_zorder(0)
-        ax.add_line(line)
-    # black ring
+        pt1 = tuple(map(int, [joints_dict[link_pair[0]][0], joints_dict[link_pair[0]][1]]))
+        pt2 = tuple(map(int, [joints_dict[link_pair[1]][0], joints_dict[link_pair[1]][1]]))
+        color = tuple(int(c * 255) for c in link_pair[2])  # Convert normalized RGB to 0-255
+        cv2.line(frame, pt1, pt2, color, 2)
+
+    # Draw joints
     for k in range(preds.shape[1]):
-        if preds[0, k, 0] > w or preds[0, k, 1] > h:
-            continue
-        radius = 2
+        x, y = int(preds[0, k, 0]), int(preds[0, k, 1])
+        if 0 <= x < w and 0 <= y < h:  # Check if point is within image bounds
+            color = tuple(int(c * 255) for c in ring_color[k])  # Convert normalized RGB to 0-255
+            cv2.circle(frame, (x, y), 3, color, -1)  # Filled circle
+            cv2.circle(frame, (x, y), 3, (0, 0, 0), 1)  # Black outline
 
-        circle = mpatches.Circle(tuple(preds[0, k, :2]),
-                                 radius=radius,
-                                 ec='black',
-                                 fc=ring_color[k],
-                                 alpha=1,
-                                 linewidth=1)
-        circle.set_zorder(1)
-        ax.add_patch(circle)
-
-    plt.gca().xaxis.set_major_locator(plt.NullLocator())
-    plt.gca().yaxis.set_major_locator(plt.NullLocator())
-    plt.axis('off')
-    plt.subplots_adjust(top=1, bottom=0, left=0, right=1, hspace=0, wspace=0)
-    plt.margins(0, 0)
+    # Save the result
     print(save_path)
-    plt.savefig(save_path, format='jpg', bbox_inches='tight', dpi=100)
-    plt.close()
+    cv2.imwrite(save_path, frame)
 
 
-def process_image(model, transform, img_path, file_name, colorstyle):
+def process_image(model, transform, img_path, file_name, colorstyle, model_size):
     data_numpy = cv2.imread(img_path, cv2.IMREAD_COLOR | cv2.IMREAD_IGNORE_ORIENTATION)
     if data_numpy is None:
         print(f"Failed to load image: {img_path}")
         return
 
-    data_numpy = cv2.resize(data_numpy, (384, 288), interpolation=cv2.INTER_AREA)
+    model_width, model_height = model_size
+
+    data_numpy = cv2.resize(data_numpy, (model_width, model_height), interpolation=cv2.INTER_AREA)
     data_numpy = cv2.cvtColor(data_numpy, cv2.COLOR_BGR2RGB)
 
     data_numpy = transform(data_numpy)
@@ -167,14 +153,12 @@ def process_image(model, transform, img_path, file_name, colorstyle):
 
     preds, maxvals = get_final_preds_no_transform(cfg, outputs.detach().cpu().numpy())
 
-    colorstyle = artacho_style
-
     save_path = os.path.join('results', f'{file_name}_result.jpg')
     plot_COCO_image(4 * preds, img_path, save_path, colorstyle.link_pairs, colorstyle.ring_color, colorstyle.color_ids,
-                    save=True)
+                    model_size=model_size, save=True)
 
 
-def process_video(model, transform, video_path, file_name, colorstyle):
+def process_video(model, transform, video_path, file_name, colorstyle, model_size):
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         print(f"Error opening video file: {video_path}")
@@ -198,7 +182,8 @@ def process_video(model, transform, video_path, file_name, colorstyle):
             break
 
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame_resized = cv2.resize(frame_rgb, (256, 192), interpolation=cv2.INTER_AREA)
+        model_width, model_height = model_size
+        frame_resized = cv2.resize(frame_rgb, (model_width, model_height), interpolation=cv2.INTER_AREA)
 
         data_tensor = transform(frame_resized).unsqueeze(0).cuda()
 
@@ -208,16 +193,19 @@ def process_video(model, transform, video_path, file_name, colorstyle):
         preds, _ = get_final_preds_no_transform(cfg, outputs.detach().cpu().numpy())
         preds *= 4
 
-        preds[0, :, 0] = preds[0, :, 0] * width / 256
-        preds[0, :, 1] = preds[0, :, 1] * height / 192
+        preds[0, :, 0] = preds[0, :, 0] * width / model_width
+        preds[0, :, 1] = preds[0, :, 1] * height / model_height
+
+        #for person_idx in range(preds.shape[0]):
+        #    if person_idx not in person_colors:
+        #        person_colors[person_idx] = colorstyle.color_ids[next_color_index % len(colorstyle.color_ids)]
+        #        next_color_index += 1
+
+        #    person_color = person_colors[person_idx]
+        #    frame = draw_pose_on_frame(frame, preds[person_idx], colorstyle, person_color)
 
         for person_idx in range(preds.shape[0]):
-            if person_idx not in person_colors:
-                person_colors[person_idx] = colorstyle.color_ids[next_color_index % len(colorstyle.color_ids)]
-                next_color_index += 1
-
-            person_color = person_colors[person_idx]
-            frame = draw_pose_on_frame(frame, preds[person_idx], colorstyle, person_color)
+            frame = draw_pose_on_frame(frame, preds[person_idx], colorstyle)
 
         out.write(frame)
 
@@ -225,17 +213,17 @@ def process_video(model, transform, video_path, file_name, colorstyle):
     out.release()
 
 
-def draw_pose_on_frame(frame, pred, colorstyle, person_color):
+def draw_pose_on_frame(frame, pred, colorstyle):
     # Draw skeleton lines
     for k, link_pair in enumerate(colorstyle.link_pairs):
         pt1 = tuple(map(int, pred[link_pair[0], :2]))
         pt2 = tuple(map(int, pred[link_pair[1], :2]))
-        cv2.line(frame, pt1, pt2, tuple(int(c * 255) for c in person_color), 2)
+        cv2.line(frame, pt1, pt2, tuple(int(c * 255) for c in link_pair[2]), 2)
 
     # Draw joint points
     for k in range(pred.shape[0]):
         x, y = int(pred[k, 0]), int(pred[k, 1])
-        cv2.circle(frame, (x, y), 3, tuple(int(c * 255) for c in person_color), -1)
+        cv2.circle(frame, (x, y), 3, tuple(int(c * 255) for c in colorstyle.ring_color[k]), -1)
         cv2.circle(frame, (x, y), 3, (0, 0, 0), 1)  # Black outline
 
     return frame
@@ -244,6 +232,10 @@ def draw_pose_on_frame(frame, pred, colorstyle, person_color):
 def main(args):
     global artacho_style
     colorstyle = artacho_style
+
+    model_height = cfg.MODEL.IMAGE_SIZE[1]
+    model_width = cfg.MODEL.IMAGE_SIZE[0]
+    model_size = (model_width, model_height)
 
     # cudnn related setting
     cudnn.benchmark = cfg.CUDNN.BENCHMARK
@@ -262,7 +254,7 @@ def main(args):
 
     model.eval()
 
-    files_loc = 'D:/Dev/Dataset/inputs/videos/single_person'
+    files_loc = args.fileDir
     files = os.listdir(files_loc)
 
     for file in files:
@@ -270,9 +262,9 @@ def main(args):
         file_name, file_ext = os.path.splitext(file)
 
         if file_ext.lower() in ['.jpg', '.jpeg', '.png']:
-            process_image(model, transform, file_path, file_name, colorstyle)
+            process_image(model, transform, file_path, file_name, colorstyle, model_size)
         elif file_ext.lower() == '.mp4':
-            process_video(model, transform, file_path, file_name, colorstyle)
+            process_video(model, transform, file_path, file_name, colorstyle, model_size)
         else:
             print(f"Unsupported file format: {file}")
 
@@ -280,8 +272,8 @@ def main(args):
 def parse_args():
     parser = argparse.ArgumentParser(description='Train keypoints network')
     # general
-    parser.add_argument('--modelDir', help='model directory', type=str, default='weights/omnipose_256_model_best.pth')
-
+    parser.add_argument('--modelDir', help='model directory', type=str, default='weights/omnipose_256x192_checkpoint_epoch_96_best.pth')
+    parser.add_argument('--fileDir', help='model directory', type=str, default='D:/Dev/Dataset/inputs/videos/single_person')
     args = parser.parse_args()
     return args
 

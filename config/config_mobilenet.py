@@ -2,26 +2,24 @@ import argparse
 import json
 import os
 from .skeleton import Skeleton
-from .config_omnipose_model import _C as cfg_default
 
-
-class ConfigOmniPose:
+class ConfigMobilenet:
     def __init__(self):
         self.parser = argparse.ArgumentParser()
 
     def init(self):
-        self.parser.add_argument('--netSize', type=int, default=[256, 192], help='network input image size')
+        self.parser.add_argument('--netSize', type=int, default=[368, 368], help='network input image size')
         self.parser.add_argument('--batch-size', type=int, default=16, help='batch size')
         self.parser.add_argument('--num-workers', type=int, default=1, help='number of workers')
-        self.parser.add_argument('--checkpoint-path', type=str, default='weights/omnipose_256x192_checkpoint_epoch_96_best.pth', help='path to the checkpoint to continue training from')
-        self.parser.add_argument('--experiment-name', type=str, default='1203_omnipose', help='experiment name to create folder for checkpoints')
+        self.parser.add_argument('--checkpoint-path', type=str, default='weights/mobilenet_checkpoint_iter_370000.pth')
+        self.parser.add_argument('--experiment-name', type=str, default='mobile_net')
 
         self.parser.add_argument('--dataset', default='coco', help='Dataset: coco, coco_eval')  ##-coco, robot22 implemented
-        self.parser.add_argument('--need-paf', default=False, help='need_paf')
+        self.parser.add_argument('--need-paf', default=True, help='need_paf')
         self.parser.add_argument('--num-keypoints', type=int, default=17, help='number of keypoints')
         self.parser.add_argument('--skeleton-type', default='coco17', help='joint type: opose14, coco17')
         self.parser.add_argument('--is_regress', default=False, help='is_regress')
-        self.parser.add_argument('--netOutScale', type=int, default=4, help='network output scale factor')
+        self.parser.add_argument('--netOutScale', type=int, default=8, help='network output scale factor')
         self.parser.add_argument('--data', type=str, default='D:/Dev/Dataset/coco', help='path to COCO dataset')
         self.parser.add_argument('--train-split', type=float, default=0.8, help='training data split ratio')
         self.parser.add_argument('--val-split', type=float, default=1.0, help='validation data split ratio')
@@ -36,7 +34,11 @@ class ConfigOmniPose:
 
         self.parser.add_argument('--weights-only', action='store_true', help='just initialize layers with pre-trained weights and start training from the beginning')
         self.parser.add_argument('--visualize', action='store_true', help='show keypoints')
-        self.parser.add_argument('--pretrained', type=bool, default=False)
+
+        # mobilenet
+        self.parser.add_argument('--num-refinement-stages', type=int, default=3)
+        self.parser.add_argument('--base-lr', type=float, default=4e-5, help='initial learning rate')
+        self.parser.add_argument('--from-mobilenet', action='store_true', help='load weights from mobilenet feature extractor')
 
     def parse(self):
         self.init()
@@ -45,67 +47,8 @@ class ConfigOmniPose:
         self.config.netSize = self.config.netSize
         self.config.is_regress = self.config.is_regress
         self.config.netOutScale = self.config.netOutScale
+        self.config.num_refinement_stages = self.config.num_refinement_stages
 
-        cfg = cfg_default.clone()
-        cfg.defrost()
-
-        # Model
-        cfg.MODEL.NUM_JOINTS = self.config.num_keypoints
-        cfg.MODEL.IMAGE_SIZE = [self.config.netSize, self.config.netSize]
-        cfg.MODEL.PRETRAINED = self.config.pretrained
-        cfg.MODEL.INIT_WEIGHTS = True
-        cfg.MODEL.NAME = 'omnipose'
-        cfg.MODEL.TAG_PER_JOINT = True
-        cfg.MODEL.TARGET_TYPE = 'gaussian'
-        cfg.MODEL.HEATMAP_SIZE = [self.config.netSize[0] // self.config.netOutScale,
-                                  self.config.netSize[1] // self.config.netOutScale]
-
-        # High Resolution Net
-        # STAGE2
-        cfg.MODEL.EXTRA.STAGE2.NUM_MODULES = 1
-        cfg.MODEL.EXTRA.STAGE2.NUM_BRANCHES = 2
-        cfg.MODEL.EXTRA.STAGE2.NUM_BLOCKS = [4, 4]
-        cfg.MODEL.EXTRA.STAGE2.NUM_CHANNELS = [32, 64]
-        cfg.MODEL.EXTRA.STAGE2.BLOCK = 'BASIC'
-        cfg.MODEL.EXTRA.STAGE2.FUSE_METHOD = 'SUM'
-
-        # STAGE3
-        cfg.MODEL.EXTRA.STAGE3.NUM_MODULES = 1
-        cfg.MODEL.EXTRA.STAGE3.NUM_BRANCHES = 3
-        cfg.MODEL.EXTRA.STAGE3.NUM_BLOCKS = [4, 4, 4]
-        cfg.MODEL.EXTRA.STAGE3.NUM_CHANNELS = [32, 64, 128]
-        cfg.MODEL.EXTRA.STAGE3.BLOCK = 'BASIC'
-        cfg.MODEL.EXTRA.STAGE3.FUSE_METHOD = 'SUM'
-
-        # STAGE4
-        cfg.MODEL.EXTRA.STAGE4.NUM_MODULES = 1
-        cfg.MODEL.EXTRA.STAGE4.NUM_BRANCHES = 4
-        cfg.MODEL.EXTRA.STAGE4.NUM_BLOCKS = [4, 4, 4, 4]
-        cfg.MODEL.EXTRA.STAGE4.NUM_CHANNELS = [32, 64, 128, 256]
-        cfg.MODEL.EXTRA.STAGE4.BLOCK = 'BASIC'
-        cfg.MODEL.EXTRA.STAGE4.FUSE_METHOD = 'SUM'
-
-        # Training 설정
-        cfg.TRAIN.LR = self.config.base_lr if hasattr(self.config, 'base_lr') else 0.001
-        cfg.TRAIN.LR_FACTOR = 0.1
-        cfg.TRAIN.LR_STEP = [90, 110]
-        cfg.TRAIN.OPTIMIZER = 'adam'
-        cfg.TRAIN.MOMENTUM = 0.9
-        cfg.TRAIN.WD = 0.0001
-        cfg.TRAIN.NESTEROV = False
-        cfg.TRAIN.GAMMA1 = 0.99
-        cfg.TRAIN.GAMMA2 = 0.0
-
-        # CUDNN 설정
-        cfg.CUDNN.BENCHMARK = True
-        cfg.CUDNN.DETERMINISTIC = False
-        cfg.CUDNN.ENABLED = True
-
-        cfg.freeze()
-
-        self.config.MODEL = cfg.MODEL
-        self.config.TRAIN = cfg.TRAIN
-        self.config.CUDNN = cfg.CUDNN
 
         # Create experiment directories if needed
         exp_root = 'exp'

@@ -9,3 +9,5 @@ ffmpeg
 #======================================
 ptflops
 yacs
+onnxruntime
+onnx
