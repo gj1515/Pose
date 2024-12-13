@@ -46,6 +46,9 @@ def visualize_keypoints(input_img, keypoints, color_style=None):
     if color_style is None:
         color_style = ColorStyle()
 
+    if isinstance(keypoints, list):
+        keypoints = np.array(keypoints).reshape(-1, 3)
+
     vis_img = input_img
     h, w = vis_img.shape[:2]
 
@@ -102,16 +105,58 @@ def visualize_keypoints(input_img, keypoints, color_style=None):
 
 
 # val_label.pkl file path
-val_label_path = 'D:/Dev/Dataset/coco/annotations/val_label.pkl'
+val_label_path = 'D:/Dev/Dataset/coco/annotations/person_keypoints_val2017.json'
 base_path = 'D:/Dev/Dataset/coco/val2017'
 
+import json
+with open(val_label_path, 'r') as f:
+    val_label_data = json.load(f)
+annotations = val_label_data['annotations']
+images = {img['id']: img for img in val_label_data['images']}
+
 # load file
-with open(val_label_path, 'rb') as f:
-    val_label_data = pickle.load(f)
+#with open(val_label_path, 'rb') as f:
+#    val_label_data = pickle.load(f)
 
 # Create a window for displaying images
 plt.ion()  # Interactive mode on
 
+for anno in annotations:
+    if 'keypoints' not in anno:
+        continue
+
+    keypoints = anno['keypoints']  # This will be a list of x,y,v triplets
+    image_id = anno['image_id']
+    image_info = images[image_id]
+    img_file = image_info['file_name']
+    print('file name: ', img_file)
+
+    img_path = os.path.join(base_path, img_file)
+    if not os.path.exists(img_path):
+        print(f"Image not found: {img_path}")
+        continue
+
+    img = cv2.imread(img_path, cv2.IMREAD_COLOR)
+    if img is None:
+        print(f"Failed to load image: {img_path}")
+        continue
+
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    # Visualize keypoints
+    fig = visualize_keypoints(img, keypoints)
+    plt.show()
+
+    # Wait for key press
+    key = input("Press Enter to continue (or 'q' to quit): ")
+    if key.lower() == 'q':
+        break
+
+    plt.close(fig)
+
+plt.ioff()
+
+"""
 for i in range(len(val_label_data)):
     keypoints = val_label_data[i]['keypoints']
     img_path = os.path.join(base_path, val_label_data[i]['img_file'])
@@ -130,3 +175,4 @@ for i in range(len(val_label_data)):
     plt.close(fig)
 
 plt.ioff()  # Interactive mode off
+"""

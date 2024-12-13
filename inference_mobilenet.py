@@ -215,7 +215,7 @@ if __name__ == '__main__':
     if args.video == '' and args.images == '':
         raise ValueError('Either --video or --image has to be provided')
 
-    net = PoseEstimationWithMobileNet()
+    net = PoseEstimationWithMobileNet(num_refinement_stages=3)
     checkpoint = torch.load(args.checkpoint_path, map_location='cpu')
     load_state(net, checkpoint)
 

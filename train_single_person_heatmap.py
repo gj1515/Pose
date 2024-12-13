@@ -1,21 +1,16 @@
-import argparse
 import cv2
-import os
-import numpy as np
 from tqdm import tqdm
 from datetime import datetime
 import time
 
 import torch
 from torch.nn import DataParallel
-import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
 from modules.loss import JointsMSELoss, AverageMeter
 from modules.load_state import load_state
-from modules.evaluate import accuracy
+from utils.omni_utils.evaluate import accuracy
 from datasets.Robot.dataset_provider import create_dataset_loader
-from utils.visualize import visualize_training_data
 
 from config.config_omnipose import ConfigOmniPose
 from config.config_omnipose_model import *

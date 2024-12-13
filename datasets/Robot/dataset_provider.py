@@ -1,5 +1,4 @@
 from datasets.coco.single.coco_single import create_coco_dataset
-
 from torch.utils.data import DataLoader
 import numpy as np
 

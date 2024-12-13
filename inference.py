@@ -45,11 +45,10 @@ from val_omnipose import visualize_keypoints
 
 
 
-
 class ColorStyle:
     def __init__(self, color, link_pairs, point_color):
         self.color = color
-        self.link_pairs = [pair[:] for pair in link_pairs]
+        self.link_pairs = link_pairs
         self.point_color = point_color
 
         for i in range(len(self.color)):
@@ -59,38 +58,34 @@ class ColorStyle:
         for i in range(len(self.point_color)):
             self.ring_color.append(tuple(np.array(self.point_color[i]) / 255.))
 
-        # Red    = (240,  2,127)
+        # RED    = (240,  2,127)
         # Yellow = (255,255,  0)
         # Green  = (169,209,142)
         # Pink   = (252,176,243)
-        # Blue   = (0,176,240)
+        # BLUE   = (0,176,240)
         color_ids = [(0, 176, 240), (252, 176, 243), (169, 209, 142), (255, 255, 0), (240, 2, 127)]
 
         self.color_ids = []
         for i in range(len(color_ids)):
             self.color_ids.append(tuple(np.array(color_ids[i]) / 255.))
 
+#color = [(252, 176, 243), (252, 176, 243), (252, 176, 243),
+#         (0, 176, 240), (0, 176, 240), (0, 176, 240),
+#         (240, 2, 127), (240, 2, 127), (240, 2, 127), (240, 2, 127), (240, 2, 127),
+#         (255, 255, 0), (255, 255, 0), (169, 209, 142),
+#         (169, 209, 142), (169, 209, 142)]
 
-color = [(252, 176, 243), (252, 176, 243), (252, 176, 243),
-         (0, 176, 240), (0, 176, 240), (0, 176, 240),
-         (240, 2, 127), (240, 2, 127), (240, 2, 127), (240, 2, 127), (240, 2, 127),
-         (255, 255, 0), (255, 255, 0), (169, 209, 142),
-         (169, 209, 142), (169, 209, 142)]
+RED = (127, 2, 240)
+BLUE = (240, 176, 0)
+GREEN  = (142,209,169)
+
+color = [RED,RED,BLUE,BLUE,GREEN,RED,BLUE,GREEN,RED,BLUE,RED,BLUE,GREEN,RED,BLUE,RED, BLUE, RED, BLUE]
 
 link_pairs = [[15, 13], [13, 11], [16, 14], [14, 12], [11, 12], \
               [5, 11], [6, 12], [5, 6], [5, 7], [6, 8], [7, 9], \
               [8, 10], [1, 2], [0, 1], [0, 2], [1, 3], [2, 4], [0, 5], [0, 6]]
 
-point_color = [(240, 2, 127), (240, 2, 127), (240, 2, 127),
-               (240, 2, 127), (240, 2, 127),
-               (255, 255, 0), (169, 209, 142),
-               (255, 255, 0), (169, 209, 142),
-               (255, 255, 0), (169, 209, 142),
-               (252, 176, 243), (0, 176, 240), (252, 176, 243),
-               (0, 176, 240), (252, 176, 243), (0, 176, 240),
-               (255, 255, 0), (169, 209, 142),
-               (255, 255, 0), (169, 209, 142),
-               (255, 255, 0), (169, 209, 142)]
+point_color = [RED,RED,BLUE,RED,BLUE,RED,BLUE,RED,BLUE,RED,BLUE,RED,BLUE,RED,BLUE,RED,BLUE]
 
 artacho_style = ColorStyle(color, link_pairs, point_color)
 
@@ -107,54 +102,42 @@ def map_joint_dict(joints):
     return joints_dict
 
 
-def plot_COCO_image(preds, img_path, save_path, link_pairs, ring_color, color_ids, save=True):
+def plot_COCO_image(preds, img_path, save_path, link_pairs, ring_color, color_ids, model_size, save=True):
     # Read Images
-    data_numpy = cv2.imread(img_path, cv2.IMREAD_COLOR | cv2.IMREAD_IGNORE_ORIENTATION)
-    h = data_numpy.shape[0]
-    w = data_numpy.shape[1]
+    model_width, model_height = model_size
+    frame = cv2.imread(img_path, cv2.IMREAD_COLOR)
+    if frame is None:
+        print(f"Failed to load image: {img_path}")
+        return
 
-    # Plot
-    fig = plt.figure(figsize=(w / 100, h / 100), dpi=100)
-    ax = plt.subplot(1, 1, 1)
-    bk = plt.imshow(data_numpy[:, :, ::-1])
-    bk.set_zorder(-1)
+    frame = cv2.resize(frame, (model_width, model_height), interpolation=cv2.INTER_AREA)
+
+    # Scale predictions to match image size
+    h, w = frame.shape[:2]
+    preds[0, :, 0] = preds[0, :, 0] * w / model_width
+    preds[0, :, 1] = preds[0, :, 1] * h / model_height
+
+    # Draw skeleton and joints using OpenCV
     joints_dict = map_joint_dict(preds[0])
 
-    # stick
+    # Draw lines
     for k, link_pair in enumerate(link_pairs):
-        color_idx = k % len(color_ids)
-        lw = 2
-        line = mlines.Line2D(
-            np.array([joints_dict[link_pair[0]][0],
-                      joints_dict[link_pair[1]][0]]),
-            np.array([joints_dict[link_pair[0]][1],
-                      joints_dict[link_pair[1]][1]]),
-            ls='-', lw=lw, alpha=1, color=color_ids[color_idx], )
-        line.set_zorder(0)
-        ax.add_line(line)
-    # black ring
+        pt1 = tuple(map(int, [joints_dict[link_pair[0]][0], joints_dict[link_pair[0]][1]]))
+        pt2 = tuple(map(int, [joints_dict[link_pair[1]][0], joints_dict[link_pair[1]][1]]))
+        color = tuple(int(c * 255) for c in link_pair[2])  # Convert normalized RGB to 0-255
+        cv2.line(frame, pt1, pt2, color, 2)
+
+    # Draw joints
     for k in range(preds.shape[1]):
-        if preds[0, k, 0] > w or preds[0, k, 1] > h:
-            continue
-        radius = 2
+        x, y = int(preds[0, k, 0]), int(preds[0, k, 1])
+        if 0 <= x < w and 0 <= y < h:  # Check if point is within image bounds
+            color = tuple(int(c * 255) for c in ring_color[k])  # Convert normalized RGB to 0-255
+            cv2.circle(frame, (x, y), 3, color, -1)  # Filled circle
+            cv2.circle(frame, (x, y), 3, (0, 0, 0), 1)  # Black outline
 
-        circle = mpatches.Circle(tuple(preds[0, k, :2]),
-                                 radius=radius,
-                                 ec='black',
-                                 fc=ring_color[k],
-                                 alpha=1,
-                                 linewidth=1)
-        circle.set_zorder(1)
-        ax.add_patch(circle)
-
-    plt.gca().xaxis.set_major_locator(plt.NullLocator())
-    plt.gca().yaxis.set_major_locator(plt.NullLocator())
-    plt.axis('off')
-    plt.subplots_adjust(top=1, bottom=0, left=0, right=1, hspace=0, wspace=0)
-    plt.margins(0, 0)
+    # Save the result
     print(save_path)
-    plt.savefig(save_path, format='jpg', bbox_inches='tight', dpi=100)
-    plt.close()
+    cv2.imwrite(save_path, frame)
 
 
 def draw_pose_on_frame(frame, keypoints, colorstyle):
@@ -313,5 +296,5 @@ if __name__ == '__main__':
     load_state(model, checkpoint)
 
     # Example usage
-    file_path = "D:/Dev/Dataset/inputs/solo_dance.mp4"
+    file_path = 'D:/Dev/Dataset/inputs/videos/single_person/solo_dance.mp4'
     main(model, file_path)

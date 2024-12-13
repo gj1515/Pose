@@ -49,7 +49,7 @@ def create_logger(cfg, cfg_name, phase='train'):
     dataset = dataset.replace(':', '_')
 
     model = cfg.MODEL.NAME
-    cfg_name = os.path.basename(cfg_name).split('.')[0]
+    #cfg_name = os.path.basename(cfg_name).split('.')[0]
 
     final_output_dir = root_output_dir / dataset / model / cfg_name
 

@@ -3,10 +3,15 @@ from yacs.config import CfgNode as CN
 
 
 _C = CN()
+_C.OUTPUT_DIR = 'results/omnipose/fulldata'
+_C.LOG_DIR = 'results/omnipose/fulldata/log'
+_C.PRINT_FREQ = 1
+
 _C.CUDNN = CN()
 _C.CUDNN.BENCHMARK = True
 _C.CUDNN.DETERMINISTIC = False
 _C.CUDNN.ENABLED = True
+
 _C.MODEL = CN()
 _C.MODEL.NAME = 'omnipose'
 _C.MODEL.INIT_WEIGHTS = True
@@ -14,8 +19,8 @@ _C.MODEL.PRETRAINED = ''
 _C.MODEL.NUM_JOINTS = 17
 _C.MODEL.TAG_PER_JOINT = True
 _C.MODEL.TARGET_TYPE = 'gaussian'
-_C.MODEL.IMAGE_SIZE = [384, 288]  # width * height, ex: 192 * 256
-_C.MODEL.HEATMAP_SIZE = [96, 72]  # width * height, ex: 24 * 32
+_C.MODEL.IMAGE_SIZE = [256, 192]  # width * height, ex: 192 * 256
+_C.MODEL.HEATMAP_SIZE = [64, 48]  # width * height, ex: 24 * 32
 _C.MODEL.SIGMA = 3
 
 _C.MODEL.EXTRA = CN(new_allowed=True)
@@ -80,6 +85,23 @@ _C.TEST.FLIP_TEST = True
 _C.TEST.POST_PROCESS = True
 _C.TEST.BLUR_KERNEL = 11
 _C.TEST.SOFT_NMS = False
+_C.TEST.COCO_BBOX_FILE = ''
+
+# DATASET related params
+_C.DATASET = CN()
+_C.DATASET.ROOT = 'D:/Dev/Dataset/coco'
+_C.DATASET.DATASET = 'coco'
+_C.DATASET.TRAIN_SET = 'train2017'
+_C.DATASET.TEST_SET = 'val2017'
+_C.DATASET.DATA_FORMAT = 'jpg'
+_C.DATASET.HYBRID_JOINTS_TYPE = ''
+_C.DATASET.SELECT_DATA = False
+_C.DATASET.COLOR_RGB = True
+_C.DATASET.FLIP = True
+_C.DATASET.NUM_JOINTS_HALF_BODY = 8
+_C.DATASET.PROB_HALF_BODY = 0.3
+_C.DATASET.ROT_FACTOR = 45
+_C.DATASET.SCALE_FACTOR = 0.35
 
 
 

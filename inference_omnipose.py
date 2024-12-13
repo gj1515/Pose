@@ -31,7 +31,6 @@ import matplotlib.patches as mpatches
 from config.config_omnipose_model import _C as cfg
 from modules.load_state import load_state
 
-
 from utils.omni_utils.inference import get_final_preds_no_transform
 
 from models.omnipose.omnipose import get_omnipose
@@ -62,7 +61,8 @@ class ColorStyle:
         for i in range(len(color_ids)):
             self.color_ids.append(tuple(np.array(color_ids[i]) / 255.))
 
-#color = [(252, 176, 243), (252, 176, 243), (252, 176, 243),
+
+# color = [(252, 176, 243), (252, 176, 243), (252, 176, 243),
 #         (0, 176, 240), (0, 176, 240), (0, 176, 240),
 #         (240, 2, 127), (240, 2, 127), (240, 2, 127), (240, 2, 127), (240, 2, 127),
 #         (255, 255, 0), (255, 255, 0), (169, 209, 142),
@@ -70,15 +70,15 @@ class ColorStyle:
 
 RED = (127, 2, 240)
 BLUE = (240, 176, 0)
-GREEN  = (142,209,169)
+GREEN = (142, 209, 169)
 
-color = [RED,RED,BLUE,BLUE,GREEN,RED,BLUE,GREEN,RED,BLUE,RED,BLUE,GREEN,RED,BLUE,RED, BLUE, RED, BLUE]
+color = [RED, RED, BLUE, BLUE, GREEN, RED, BLUE, GREEN, RED, BLUE, RED, BLUE, GREEN, RED, BLUE, RED, BLUE, RED, BLUE]
 
 link_pairs = [[15, 13], [13, 11], [16, 14], [14, 12], [11, 12], \
               [5, 11], [6, 12], [5, 6], [5, 7], [6, 8], [7, 9], \
               [8, 10], [1, 2], [0, 1], [0, 2], [1, 3], [2, 4], [0, 5], [0, 6]]
 
-point_color = [RED,RED,BLUE,RED,BLUE,RED,BLUE,RED,BLUE,RED,BLUE,RED,BLUE,RED,BLUE,RED,BLUE]
+point_color = [RED, RED, BLUE, RED, BLUE, RED, BLUE, RED, BLUE, RED, BLUE, RED, BLUE, RED, BLUE, RED, BLUE]
 
 artacho_style = ColorStyle(color, link_pairs, point_color)
 
@@ -94,7 +94,7 @@ def map_joint_dict(joints):
     return joints_dict
 
 
-def plot_COCO_image(preds, img_path, save_path, link_pairs, ring_color, color_ids, model_size, save=True):
+def plot_COCO_image(preds, img_path, save_path, link_pairs, ring_color, model_size):
     # Read Images
     model_width, model_height = model_size
     frame = cv2.imread(img_path, cv2.IMREAD_COLOR)
@@ -102,7 +102,7 @@ def plot_COCO_image(preds, img_path, save_path, link_pairs, ring_color, color_id
         print(f"Failed to load image: {img_path}")
         return
 
-    frame = cv2.resize(frame, (model_width, model_height), interpolation=cv2.INTER_AREA)
+    # frame = cv2.resize(frame, (model_width, model_height), interpolation=cv2.INTER_AREA)
 
     # Scale predictions to match image size
     h, w = frame.shape[:2]
@@ -154,8 +154,8 @@ def process_image(model, transform, img_path, file_name, colorstyle, model_size)
     preds, maxvals = get_final_preds_no_transform(cfg, outputs.detach().cpu().numpy())
 
     save_path = os.path.join('results', f'{file_name}_result.jpg')
-    plot_COCO_image(4 * preds, img_path, save_path, colorstyle.link_pairs, colorstyle.ring_color, colorstyle.color_ids,
-                    model_size=model_size, save=True)
+    plot_COCO_image(4 * preds, img_path, save_path, colorstyle.link_pairs, colorstyle.ring_color,
+                    model_size=model_size)
 
 
 def process_video(model, transform, video_path, file_name, colorstyle, model_size):
@@ -196,7 +196,7 @@ def process_video(model, transform, video_path, file_name, colorstyle, model_siz
         preds[0, :, 0] = preds[0, :, 0] * width / model_width
         preds[0, :, 1] = preds[0, :, 1] * height / model_height
 
-        #for person_idx in range(preds.shape[0]):
+        # for person_idx in range(preds.shape[0]):
         #    if person_idx not in person_colors:
         #        person_colors[person_idx] = colorstyle.color_ids[next_color_index % len(colorstyle.color_ids)]
         #        next_color_index += 1
@@ -242,15 +242,15 @@ def main(args):
     torch.backends.cudnn.deterministic = cfg.CUDNN.DETERMINISTIC
     torch.backends.cudnn.enabled = cfg.CUDNN.ENABLED
 
+    # Data loading code
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    transform = transforms.Compose([transforms.ToTensor(), normalize, ])
+
     model = get_omnipose(cfg, is_train=False)
     checkpoint = torch.load(args.modelDir)
     load_state(model, checkpoint)
 
     model = model.cuda()
-
-    # Data loading code
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    transform = transforms.Compose([transforms.ToTensor(), normalize, ])
 
     model.eval()
 
@@ -272,8 +272,9 @@ def main(args):
 def parse_args():
     parser = argparse.ArgumentParser(description='Train keypoints network')
     # general
-    parser.add_argument('--modelDir', help='model directory', type=str, default='weights/omnipose_256x192_checkpoint_epoch_96_best.pth')
-    parser.add_argument('--fileDir', help='model directory', type=str, default='D:/Dev/Dataset/inputs/videos/single_person')
+    parser.add_argument('--modelDir', help='model directory', type=str,
+                        default='weights/omnipose_256x192_checkpoint_epoch_96_best.pth')
+    parser.add_argument('--fileDir', help='model directory', type=str, default='D:/Dev/Dataset/coco/test')
     args = parser.parse_args()
     return args
 

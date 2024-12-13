@@ -1,4 +1,3 @@
-import argparse
 import cv2
 import json
 import numpy as np
@@ -27,10 +26,10 @@ from testing.eval_util import  get_keypoints_ori_coco
 import matplotlib.pyplot as plt
 
 from modules.loss import AverageMeter
-from modules.evaluate import accuracy
+from utils.omni_utils.evaluate import accuracy
 import time
 
-from utils.visualize import visualize_keypoints, ColorStyle, visualize_heatmaps
+from utils.visualize import visualize_keypoints, ColorStyle
 
 
 class NumpyEncoder(json.JSONEncoder):

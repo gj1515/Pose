@@ -11,3 +11,6 @@ ptflops
 yacs
 onnxruntime
 onnx
+scipy
+dataset
+json_tricks

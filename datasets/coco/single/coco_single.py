@@ -11,6 +11,7 @@ import numpy as np
 import cv2
 import copy
 from torch.utils.data import Dataset
+import json
 
 import pycocotools
 
@@ -32,6 +33,7 @@ class CocoDataset_SinglePerson(Dataset):
         self.config = config
         self.transform = transform
         self.labels = preprocess_single_person_coco(config, type)
+
         # labels = {
         #     'img_file': images_info[annotation['image_id']]['file_name'],
         #     'img_width': images_info[annotation['image_id']]['width'],
@@ -183,20 +185,21 @@ class CocoDataset_SinglePerson(Dataset):
         sample['image'] = transform(sample['image'])
         # sample['image'] = normalize_image(sample['image'])
 
-        mask = np.ones(shape=(sample['image'].shape[-2], sample['image'].shape[-1]), dtype=np.float32)
-        # mask = get_mask(sample['label']['obj_bbox'], mask)
-        sample['mask'] = mask
-        mask = cv2.resize(sample['mask'], dsize=None, fx=1/8, fy=1/8, interpolation=cv2.INTER_AREA)
+        if self._need_paf:
+            mask = np.ones(shape=(sample['image'].shape[-2], sample['image'].shape[-1]), dtype=np.float32)
+            # mask = get_mask(sample['label']['obj_bbox'], mask)
+            sample['mask'] = mask
+            mask = cv2.resize(sample['mask'], dsize=None, fx=1/self.config.netOutScale, fy=1/self.config.netOutScale, interpolation=cv2.INTER_AREA)
 
-        keypoint_mask = np.zeros(shape=sample['heat_maps'].shape, dtype=np.float32)
-        for idx in range(keypoint_mask.shape[0]):
-            keypoint_mask[idx] = mask
-        sample['keypoint_mask'] = keypoint_mask
+            keypoint_mask = np.zeros(shape=sample['heat_maps'].shape, dtype=np.float32)
+            for idx in range(keypoint_mask.shape[0]):
+                keypoint_mask[idx] = mask
+            sample['keypoint_mask'] = keypoint_mask
 
-        paf_mask = np.zeros(shape=sample['paf_maps'].shape, dtype=np.float32)
-        for idx in range(paf_mask.shape[0]):
-            paf_mask[idx] = mask
-        sample['paf_mask'] = paf_mask
+            paf_mask = np.zeros(shape=sample['paf_maps'].shape, dtype=np.float32)
+            for idx in range(paf_mask.shape[0]):
+                paf_mask[idx] = mask
+            sample['paf_mask'] = paf_mask
 
         if self._is_regress:
             sample['label']['keypoints'] = normalize_keypoints(sample['label']['keypoints'], self.config.netSize)
